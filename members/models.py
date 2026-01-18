@@ -15,4 +15,4 @@ class Task(models.Model):
     update_t = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.task
+        return self.title
