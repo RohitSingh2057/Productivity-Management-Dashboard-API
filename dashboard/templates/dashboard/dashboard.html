@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+    <h2 class="text-center mb-4">Task Productivity Dashboard</h2>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="p-3 bg-success text-white rounded text-center">
+                <h5>Completed Today</h5>
+                <h2 id="completed_today">0</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-warning text-white rounded text-center">
+                <h5>Overdue Tasks</h5>
+                <h2 id="overdue_count">0</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-primary text-white rounded text-center">
+                <h5>Total Created</h5>
+                <h2 id="total_created">0</h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-info text-white rounded text-center">
+                <h5>Total Completed</h5>
+                <h2 id="total_completed">0</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card p-3 mb-4">
+        <h4>Tasks Completed — Last 7 Days</h4>
+        <canvas id="completedDayChart"></canvas>
+    </div>
+
+    <div class="card p-3 mb-4">
+        <h4>Tasks Completed — Last 8 Weeks</h4>
+        <canvas id="completedWeekChart"></canvas>
+    </div>
+
+    <div class="card p-3 mb-4">
+        <h4>Created vs Completed</h4>
+        <canvas id="createdCompletedChart"></canvas>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem("access_token");
+
+function api(endpoint, callback) {
+    fetch("/api/dashboard/" + endpoint, {
+        headers: { "Authorization": "Bearer " + token }
+    })
+    .then(res => res.json())
+    .then(data => callback(data));
+}
+
+// Load Summary Cards
+api("tasks/created-vs-completed/", data => {
+    document.getElementById("total_created").innerText = data.created;
+    document.getElementById("total_completed").innerText = data.completed;
+});
+api("tasks/overdue/", data => {
+    document.getElementById("overdue_count").innerText = data.overdue;
+});
+
+// Chart 1: Completed per day
+api("tasks/completed/day/", data => {
+    const labels = data.map(x => x.day);
+    const totals = data.map(x => x.total);
+    new Chart(document.getElementById("completedDayChart"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Completed", data: totals }] }
+    });
+});
+
+// Chart 2: Completed per week
+api("tasks/completed/week/", data => {
+    const labels = data.map(x => x.week);
+    const totals = data.map(x => x.total);
+    new Chart(document.getElementById("completedWeekChart"), {
+        type: "line",
+        data: { labels, datasets: [{ label: "Completed", data: totals }] }
+    });
+});
+
+// Chart 3: Created vs Completed
+api("tasks/created-vs-completed/", data => {
+    new Chart(document.getElementById("createdCompletedChart"), {
+        type: "pie",
+        data: { labels: ["Created","Completed"], datasets: [{ data: [data.created,data.completed] }] }
+    });
+});
+</script>
+
+</body>
+</html>
