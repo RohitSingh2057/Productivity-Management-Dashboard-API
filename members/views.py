@@ -1,11 +1,11 @@
-from django.shortcuts import render
-from django.http import HttpResponse
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from .models import Task
-from .serializers import TaskSerializer
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import render
+from django.http import HttpResponse
+from .models import Task
+from .serializers import TaskSerializer,RegisterSerializer
 
 def members(request):
     return HttpResponse("Members route works!")
@@ -22,3 +22,19 @@ def task_list(request):
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response(serializer.data)
+
+from .serializers import RegisterSerializer
+
+
+@api_view(['POST'])
+def register(request):
+    serializer = RegisterSerializer(data=request.data)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {"message": "User registered successfully"},
+            status=status.HTTP_201_CREATED
+        )
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
