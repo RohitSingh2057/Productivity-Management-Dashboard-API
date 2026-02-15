@@ -1,108 +1,609 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Task Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Task Management • Dashboard</title>
 
-<div class="container py-4">
-    <h2 class="text-center mb-4">Task Productivity Dashboard</h2>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Montserrat for headings -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="p-3 bg-success text-white rounded text-center">
-                <h5>Completed Today</h5>
-                <h2 id="completed_today">0</h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="p-3 bg-warning text-white rounded text-center">
-                <h5>Overdue Tasks</h5>
-                <h2 id="overdue_count">0</h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="p-3 bg-primary text-white rounded text-center">
-                <h5>Total Created</h5>
-                <h2 id="total_created">0</h2>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="p-3 bg-info text-white rounded text-center">
-                <h5>Total Completed</h5>
-                <h2 id="total_completed">0</h2>
-            </div>
-        </div>
-    </div>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    <!-- Charts -->
-    <div class="card p-3 mb-4">
-        <h4>Tasks Completed — Last 7 Days</h4>
-        <canvas id="completedDayChart"></canvas>
-    </div>
+  <style>
+    :root{
+      /* Stronger green + cream */
+      --bg: #f7f2e8;               /* cream base */
+      --text: #13231c;
+      --muted: rgba(19, 35, 28, 0.62);
 
-    <div class="card p-3 mb-4">
-        <h4>Tasks Completed — Last 8 Weeks</h4>
-        <canvas id="completedWeekChart"></canvas>
-    </div>
+      --g-900: #0f3d2b;            /* deep green */
+      --g-700: #1b6b4a;            /* darker green */
+      --g-500: #2aa86f;            /* stronger accent */
+      --g-200: #c9f2de;            /* light mint */
+      --cream: #efe6d6;            /* soft cream */
+      --card: rgba(255,255,255,0.88);
 
-    <div class="card p-3 mb-4">
-        <h4>Created vs Completed</h4>
-        <canvas id="createdCompletedChart"></canvas>
-    </div>
-</div>
+      --border: rgba(15, 61, 43, 0.12);
+      --shadow: 0 14px 38px rgba(15, 61, 43, 0.12);
+      --radius: 18px;
+    }
 
-<script>
-const token = localStorage.getItem("access_token");
+    * { box-sizing: border-box; }
+    body{
+  margin: 0;
+  min-height: 100vh; /* ensure full viewport */
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--text);
 
-function api(endpoint, callback) {
-    fetch("/api/dashboard/" + endpoint, {
-        headers: { "Authorization": "Bearer " + token }
-    })
-    .then(res => res.json())
-    .then(data => callback(data));
+  background:
+    radial-gradient(1000px 560px at 18% 8%, rgba(42,168,111,0.32), transparent 62%),
+    radial-gradient(900px 560px at 82% 16%, rgba(201,242,222,0.42), transparent 58%),
+    radial-gradient(700px 520px at 50% 92%, rgba(42,168,111,0.16), transparent 60%),
+    var(--bg);
+
+  background-repeat: no-repeat;   /* prevents splitting */
+  background-size: cover;         /* smooth fill */
+  background-attachment: fixed;   /* smoother scrolling */
 }
+    .wrap{
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px 16px 40px;
+      display: grid;
+      gap: 14px;
+    }
+    /* Banner */
+    .banner{
+      border-radius: 22px;
+      border: 1px solid rgba(15, 61, 43, 0.15);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      background:
+        linear-gradient(120deg, rgba(42,168,111,0.96), rgba(201,242,222,0.80));
+    }
+    .bannerInner{
+      padding: 18px 18px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .brand{
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .logo{
+      width: 46px; height: 46px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.22);
+      border: 1px solid rgba(255,255,255,0.25);
+      display:flex; align-items:center; justify-content:center;
+      font-size: 20px;
+      box-shadow: 0 10px 22px rgba(15,61,43,0.18);
+      flex: 0 0 auto;
+    }
+    .brandText{
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    /* only font sizes increased (proportions unchanged) */
+    .brandText h1{
+      margin: 0;
+      font-family: "Montserrat", system-ui, sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-size: 32px; /* bigger heading */
+      line-height: 1.05;
+      color: rgba(255,255,255,0.98);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brandText p{
+      margin: 0;
+      font-size: 13px;
+      color: rgba(255,255,255,0.88);
+    }
 
-// Load Summary Cards
-api("tasks/created-vs-completed/", data => {
-    document.getElementById("total_created").innerText = data.created;
-    document.getElementById("total_completed").innerText = data.completed;
-});
-api("tasks/overdue/", data => {
-    document.getElementById("overdue_count").innerText = data.overdue;
-});
+    .bannerActions{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .pill{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.28);
+      background: rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.92);
+      font-size: 13px;
+      backdrop-filter: blur(6px);
+      line-height: 1.2;
+    }
+    .btn{
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.26);
+      background: rgba(255,255,255,0.20);
+      color: rgba(255,255,255,0.95);
+      font-weight: 800;
+      padding: 9px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform .06s ease, filter .15s ease, background .15s ease;
+      backdrop-filter: blur(6px);
+    }
+    .btn:hover{ background: rgba(255,255,255,0.26); }
+    .btn:active{ transform: translateY(1px); }
+    .btnLight{
+      background: rgba(255,255,255,0.92);
+      color: var(--g-900);
+      border-color: rgba(255,255,255,0.65);
+    }
+    /* Cards / layout */
+    .grid{
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+    .card{
+      border: 1px solid var(--border);
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+    }
+    .cardHead{
+      display:flex;
+      align-items:flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    /* only font size increased */
+    .cardHead h2{
+      margin: 0;
+      font-family: "Montserrat", system-ui, sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      font-size: 22px; /* bigger section titles */
+      line-height: 1.15;
+      color: var(--g-900);
+    }
+    .cardHead p{
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .tiny{
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .span-12{ grid-column: span 12; }
+    .span-6{ grid-column: span 6; }
+    @media (max-width: 980px){
+      .span-6{ grid-column: span 12; }
+      .bannerInner{ align-items: flex-start; }
+      .brandText h1{ font-size: 26px; }
+      .cardHead h2{ font-size: 20px; }
+    }
+    /* Overview (vertical, wider, less empty) */
+    .overviewStack{
+      display: grid;
+      gap: 12px;
+    }
+    .kpiRow{
+      border: 1px solid rgba(15,61,43,0.10);
+      background: rgba(255,255,255,0.82);
+      border-radius: 16px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 10px 26px rgba(15,61,43,0.07);
+    }
+    .kpiLeft{
+      display: grid;
+      gap: 3px;
+    }
+    .kpiLabel{
+      display:flex; align-items:center; gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .dot{
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--g-500);
+      box-shadow: 0 0 0 6px rgba(42,168,111,0.18);
+    }
+    .kpiHint{
+      font-size: 12px;
+      color: var(--muted);
+    }
+    /* only font size slightly increased */
+    .kpiValue{
+      font-size: 34px; /* a bit bigger KPI numbers */
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--g-900);
+      line-height: 1;
+    }
+    .canvaswrap{
+      height: 320px;
+      position: relative;
+    }
+    /* Monthly section: same layout but no year rail */
+    .monthLayout{
+      display: grid;
+      grid-template-columns: 1fr; /* full width chart */
+      gap: 12px;
+      align-items: stretch;
+    }
+    .toast{
+      display:none;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(185, 28, 28, 0.15);
+      background: rgba(254, 242, 242, 0.88);
+      color: #7f1d1d;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="banner">
+      <div class="bannerInner">
+        <div class="brand">
+          <div class="brandText">
+            <h1>Task Management</h1>
+            <p>Small steps, steady progress, happier days 🌿</p>
+          </div>
+        </div>
 
-// Chart 1: Completed per day
-api("tasks/completed/day/", data => {
-    const labels = data.map(x => x.day);
-    const totals = data.map(x => x.total);
-    new Chart(document.getElementById("completedDayChart"), {
-        type: "bar",
-        data: { labels, datasets: [{ label: "Completed", data: totals }] }
+        <div class="bannerActions">
+          <span id="statusPill" class="pill">Checking session…</span>
+          <button class="btn" onclick="refreshAll()">Refresh</button>
+          <button class="btn btnLight" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </div>
+    <div id="toast" class="toast"></div>
+    <div class="grid">
+      <!-- OVERVIEW: wide + vertical -->
+      <section class="card span-12">
+        <div class="cardHead">
+          <div>
+            <h2>Overview</h2>
+            <p>Let get back to work!</p>
+          </div>
+          <p class="tiny" id="overviewLabel">—</p>
+        </div>
+        <div class="overviewStack">
+          <div class="kpiRow">
+            <div class="kpiLeft">
+              <div class="kpiLabel"><span class="dot"></span> Overdue</div>
+              <div class="kpiHint">Tasks past deadline</div>
+            </div>
+            <div id="kpiOverdue" class="kpiValue">—</div>
+          </div>
+          <div class="kpiRow">
+            <div class="kpiLeft">
+              <div class="kpiLabel"><span class="dot"></span> Created</div>
+              <div class="kpiHint">Total tasks created</div>
+            </div>
+            <div id="kpiCreated" class="kpiValue">—</div>
+          </div>
+          <div class="kpiRow">
+            <div class="kpiLeft">
+              <div class="kpiLabel"><span class="dot"></span> Completed</div>
+              <div class="kpiHint">Total tasks completed</div>
+            </div>
+            <div id="kpiCompleted" class="kpiValue">—</div>
+          </div>
+          <div class="kpiRow">
+            <div class="kpiLeft">
+              <div class="kpiLabel"><span class="dot"></span> Completion Rate</div>
+              <div class="kpiHint">Completed ÷ Created</div>
+            </div>
+            <div id="kpiRate" class="kpiValue">—</div>
+          </div>
+        </div>
+      </section>
+      <!-- Created vs Completed: subtle palette -->
+      <section class="card span-6">
+        <div class="cardHead">
+          <div>
+            <h2>Created vs Completed</h2>
+            <p>We love seeing more progress</p>
+          </div>
+          <p class="tiny" id="cvclabel">—</p>
+        </div>
+        <div class="canvaswrap">
+          <canvas id="chartCreatedCompleted"></canvas>
+        </div>
+      </section>
+      <!-- Completed per day -->
+      <section class="card span-6">
+        <div class="cardHead">
+          <div>
+            <h2>Completed per Day</h2>
+            <p>Last 7 days</p>
+          </div>
+          <p class="tiny" id="daylabel">—</p>
+        </div>
+        <div class="canvaswrap">
+          <canvas id="chartPerDay"></canvas>
+        </div>
+      </section>
+      <!-- Completed per month (derived from weekly endpoint) + years inside bubble -->
+      <section class="card span-12">
+        <div class="cardHead">
+          <div>
+            <h2>Completed per Month</h2>
+            <p>Monthly view (derived from your weekly data)</p>
+          </div>
+          <p class="tiny" id="monthlabel">—</p>
+        </div>
+        <div class="monthLayout">
+          <div class="canvaswrap">
+            <canvas id="chartPerMonth"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    const API = {
+      overdue: "/api/dashboard/tasks/overdue/",
+      cvc: "/api/dashboard/tasks/created-vs-completed/",
+      perDay: "/api/dashboard/tasks/completed/day/",
+      perWeek: "/api/dashboard/tasks/completed/week/",
+    };
+    function getToken(){ return localStorage.getItem("access_token"); }
+    function setPill(ok, text){
+      const pill = document.getElementById("statusPill");
+      pill.textContent = text;
+      pill.style.background = ok ? "rgba(255,255,255,0.18)" : "rgba(254, 242, 242, 0.86)";
+      pill.style.borderColor = ok ? "rgba(255,255,255,0.28)" : "rgba(185, 28, 28, 0.20)";
+      pill.style.color = ok ? "rgba(255,255,255,0.92)" : "#7f1d1d";
+    }
+    function showToast(msg){
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+    }
+    function hideToast(){
+      const t = document.getElementById("toast");
+      t.style.display = "none";
+      t.textContent = "";
+    }
+    async function fetchJSON(url){
+      const token = getToken();
+      if(!token){
+        window.location.href = "/login/";
+        return null;
+      }
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        }
+      });
+      if(res.status === 401){
+        localStorage.removeItem("access_token");
+        window.location.href = "/login/";
+        return null;
+      }
+      if(!res.ok){
+        const txt = await res.text();
+        throw new Error(`Request failed (${res.status}): ${txt}`);
+      }
+      return await res.json();
+    }
+    // Charts
+    let chartCreatedCompleted = null;
+    let chartPerDay = null;
+    let chartPerMonth = null;
+    function destroyIfExists(chart){ if(chart) chart.destroy(); }
+    function formatPct(n){
+      if(!isFinite(n)) return "—";
+      return Math.round(n * 100) + "%";
+    }
+    function parseISODate(s){
+      const [y,m,d] = s.split("-").map(Number);
+      return new Date(Date.UTC(y, m-1, d));
+    }
+    function monthKey(dateObj){
+      const y = dateObj.getUTCFullYear();
+      const m = String(dateObj.getUTCMonth()+1).padStart(2,"0");
+      return `${y}-${m}`;
+    }
+    function monthLabelFromKey(key){
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const [,m] = key.split("-").map(Number);
+      return `${months[m-1]}`; // month only
+    }
+    function yearsFromMonthKeys(keys){
+      return Array.from(new Set(keys.map(k => k.split("-")[0]))).sort();
+    }
+    function toMonthlyFromWeekly(perWeek){
+      const buckets = new Map(); // YYYY-MM -> sum
+      for(const row of perWeek){
+        const wk = String(row.week || "");
+        const startStr = wk.split("→")[0]?.trim();
+        if(!startStr) continue;
+        const startDate = parseISODate(startStr);
+        const key = monthKey(startDate);
+        buckets.set(key, (buckets.get(key) || 0) + Number(row.total || 0));
+      }
+      const keys = Array.from(buckets.keys()).sort();
+      const labels = keys.map(k => monthLabelFromKey(k));
+      const values = keys.map(k => buckets.get(k));
+      const years = yearsFromMonthKeys(keys);
+
+      return { keys, labels, values, years };
+    }
+    async function refreshAll(){
+      hideToast();
+      setPill(true, "Loading…");
+      try{
+        const [overdue, cvc, perDay, perWeek] = await Promise.all([
+          fetchJSON(API.overdue),
+          fetchJSON(API.cvc),
+          fetchJSON(API.perDay),
+          fetchJSON(API.perWeek),
+        ]);
+        if(!overdue || !cvc || !perDay || !perWeek) return;
+        const created = Number(cvc.created || 0);
+        const completed = Number(cvc.completed || 0);
+        const overdueCount = Number(overdue.overdue || 0);
+        const rate = created > 0 ? (completed / created) : NaN;
+        // KPI
+        document.getElementById("kpiOverdue").textContent = overdueCount;
+        document.getElementById("kpiCreated").textContent = created;
+        document.getElementById("kpiCompleted").textContent = completed;
+        document.getElementById("kpiRate").textContent = formatPct(rate);
+        document.getElementById("overviewLabel").textContent = `${completed} done • ${created} total`;
+        document.getElementById("cvclabel").textContent = `${completed} completed • ${created} created`;
+        // Created vs Completed (subtle palette)
+        const remaining = Math.max(created - completed, 0);
+        destroyIfExists(chartCreatedCompleted);
+        chartCreatedCompleted = new Chart(
+          document.getElementById("chartCreatedCompleted"),
+          {
+            type: "doughnut",
+            data: {
+              labels: ["Completed", "Remaining"],
+              datasets: [{
+                data: [completed, remaining],
+                backgroundColor: ["rgba(27,107,74,0.82)", "rgba(239,230,214,0.95)"],
+                borderWidth: 0,
+                hoverOffset: 7
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: "bottom" } },
+              cutout: "62%"
+            }
+          }
+        );
+        // Per day
+        const dayLabels = perDay.map(x => x.day);
+        const dayValues = perDay.map(x => Number(x.total || 0));
+        if(dayLabels.length){
+          document.getElementById("daylabel").textContent =
+            `${dayLabels[0]} → ${dayLabels[dayLabels.length-1]}`;
+        }
+        destroyIfExists(chartPerDay);
+        chartPerDay = new Chart(
+          document.getElementById("chartPerDay"),
+          {
+            type: "bar",
+            data: {
+              labels: dayLabels,
+              datasets: [{
+                label: "Completed",
+                data: dayValues,
+                backgroundColor: "rgba(42,168,111,0.78)",
+                borderWidth: 0,
+                borderRadius: 10
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { grid: { display: false } }
+              }
+            }
+          }
+        );
+        // Monthly (derived from weekly)
+        const monthly = toMonthlyFromWeekly(perWeek);
+        // Put year info inside the monthlabel bubble (2 lines)
+        const monthLabelEl = document.getElementById("monthlabel");
+        let yearLine = "—";
+        if (monthly.years.length === 1) {
+          yearLine = `Year: ${monthly.years[0]}`;
+        } else if (monthly.years.length > 1) {
+          yearLine = `Years: ${monthly.years[0]}–${monthly.years[monthly.years.length - 1]}`;
+        }
+        monthLabelEl.innerHTML =
+          (monthly.labels.length ? `Last ${monthly.labels.length} month(s)` : "—") +
+          `<br><span style="opacity:.85">${yearLine}</span>`;
+        destroyIfExists(chartPerMonth);
+        chartPerMonth = new Chart(
+          document.getElementById("chartPerMonth"),
+          {
+            type: "line",
+            data: {
+              labels: monthly.labels, // month only (no year)
+              datasets: [{
+                label: "Completed",
+                data: monthly.values,
+                borderColor: "rgba(15,61,43,0.92)",
+                backgroundColor: "rgba(201,242,222,0.40)",
+                tension: 0.35,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { grid: { display: false } }
+              }
+            }
+          }
+        );
+        setPill(true, "Session OK ✓");
+      } catch (e){
+        console.error(e);
+        setPill(false, "Couldn’t load");
+        showToast("Couldn’t fetch dashboard data. Check your token and API routes, then refresh.");
+      }
+    }
+    function logout(){
+      localStorage.removeItem("access_token");
+      window.location.href = "/login/";
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = getToken();
+      if(!token){
+        window.location.href = "/login/";
+        return;
+      }
+      setPill(true, "Session OK ✓");
+      refreshAll();
     });
-});
-
-// Chart 2: Completed per week
-api("tasks/completed/week/", data => {
-    const labels = data.map(x => x.week);
-    const totals = data.map(x => x.total);
-    new Chart(document.getElementById("completedWeekChart"), {
-        type: "line",
-        data: { labels, datasets: [{ label: "Completed", data: totals }] }
-    });
-});
-
-// Chart 3: Created vs Completed
-api("tasks/created-vs-completed/", data => {
-    new Chart(document.getElementById("createdCompletedChart"), {
-        type: "pie",
-        data: { labels: ["Created","Completed"], datasets: [{ data: [data.created,data.completed] }] }
-    });
-});
-</script>
-
+  </script>
 </body>
 </html>
